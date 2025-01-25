@@ -12,10 +12,16 @@ class FileController extends Controller
 {
     public function upload(Request $request)
     {
-        // Step 1: Validate the file
+        // Step 1: Validate the file --> image
         $request->validate([
             'file' => 'required|file|mimes:jpeg,png,gif|max:2048',
         ]);
+
+        // Or Step 1: Validate the file --> add document
+
+        // $request->validate([
+        //     'file' => 'required|file|mimes:jpeg,png,gif,pdf,docx,zip|max:20480',
+        // ]);
 
         $file = $request->file('file');
         $filePath = $file->getPathname();
@@ -27,6 +33,7 @@ class FileController extends Controller
         }
 
         // Step 3: Validate file content using Intervention Image
+        // remove the image from if it is a document
         try {
             $image = Image::make($filePath);
         } catch (\Exception $e) {
