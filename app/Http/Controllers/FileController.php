@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Intervention\Image\Facades\Image;
+use Intervention\Image\Laravel\Facades\Image;
 
 class FileController extends Controller
 {
@@ -33,24 +33,25 @@ class FileController extends Controller
         }
 
         // Step 3: Validate file content using Intervention Image
-        // remove the image from if it is a document
         try {
-            $image = Image::make($filePath);
+            $image = Image::read($filePath);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'The file is not a valid image. Line: ' . $e->getLine() . ' Message: ' . $e->getMessage()], 400);
+            return redirect()->back()->with(
+                'error',
+                'The file is not a valid image. Line: ' . $e->getLine() . ' Message: ' . $e->getMessage()
+            );
         }
 
         // Step 4: Scan file content for malicious code
         $fileContent = file_get_contents($filePath);
         if (preg_match('/<\?php/i', $fileContent)) {
-            return response()->json(['error' => 'The file contains malicious code.'], 400);
+            return redirect()->back()->with('error', 'The file contains malicious code.');
         }
 
         // Step 5: Re-encode the image to strip out any embedded malicious code
         $fileName = Str::random(40) . '.jpg';
-        $cleanImagePath = storage_path('app/uploads/' . $fileName);
-        $image->encode('jpg', 75);
-        $image->save($cleanImagePath);
+        $cleanImagePath = storage_path('app/clean/' . $fileName);
+        $image->encode()->save($cleanImagePath);
 
         // Step 6: Store the file securely outside the web root
         Storage::disk('local')->put('uploads/' . $fileName, file_get_contents($cleanImagePath));
@@ -63,9 +64,6 @@ class FileController extends Controller
         ]);
 
         // Step 8: Return a success response
-        return response()->json([
-            'message' => 'File uploaded successfully.',
-            'file' => $fileName,
-        ]);
+        return redirect()->route('dashboard')->with('success', 'File uploaded successfully.');
     }
 }
